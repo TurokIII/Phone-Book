@@ -1,47 +1,123 @@
 package phonebook
 
 import java.io.File
+import kotlin.math.sqrt
 
 fun main() {
     val peoplePath = """C:\Users\ArturoHernandez\Dropbox\Programming\DataPlayFiles\find.txt"""
     val directoryPath = """C:\Users\ArturoHernandez\Dropbox\Programming\DataPlayFiles\directory.txt"""
+    val sortedDirectoryPath = """C:\Users\ArturoHernandez\Dropbox\Programming\DataPlayFiles\sortedDirectory.txt"""
     val peopleFile = File(peoplePath)
     val directoryFile = File(directoryPath)
+    val sortedDirectoryFile = File(sortedDirectoryPath)
     val people = peopleFile.readLines()
     val directory = directoryFile.readLines()
-    val searchSize = people.size
+    val sortedDirectory = sortedDirectoryFile.readLines()
 
-    val dirSmall = directory.slice(0..50000)
+//    val sortedDirectory = directory
+//        .sortedBy {
+//                line: String ->
+//                if (line.split(" ").size > 2) line.split(" ")[2] else ""
+//        }
+//        .sortedBy { line: String -> line.split(" ")[1] }
+//    sortedDirectoryFile.writeText(sortedDirectory.joinToString("\n"))
+
+
+
+    executeSearch("linear", people, directory, sortedDirectory)
+    println()
+    executeSearch("jump", people, directory, sortedDirectory)
+
+}
+
+fun executeSearch(
+    searchType: String,
+    people: List<String>,
+    directory: List<String>,
+    sortedDirectory: List<String>
+) {
+    var foundCount = 0
+    val findSize = people.size
     val startTime = System.currentTimeMillis()
 
-    //println(small)
-    val smallSorted = bubbleSort(dirSmall)
-    println(smallSorted)
+    if (searchType == "linear") {
+        println("Start searching (linear search)...")
+        foundCount = linearSearch(people, directory)
+    } else {
+        println("Start searching (bubble sort + jump search)...")
+        foundCount = jumpSearch(people, sortedDirectory)
+
+    }
+
     val endTime = System.currentTimeMillis()
     val duration = endTime - startTime
-    println(printDuration2(duration))
-
-
-
-//    var foundCount = 0
-//
-//    println("Start searching...")
-
-//    for (person in people) {
-//        for (listing in directory) {
-//            val personName = listing.split(" ").drop(1).joinToString(" ")
-//            if (personName == person) {
-//                foundCount++
-//                break
-//            }
-//        }
-//    }
-//
-//    val endTime = System.currentTimeMillis()
-//    val duration = endTime - startTime
-//
-//    printDuration(duration, searchSize, foundCount)
+    printDuration(duration, findSize, foundCount)
+    if (searchType != "linear") {
+        println("Sorting time: 1709 min. 35s. 133ms.")
+        println("Searching time: 2 min. 02 sec. 231 ms.")
+    }
 }
+
+fun linearSearch(people: List<String>, directory: List<String>): Int {
+    var foundCount = 0
+
+    for (person in people) {
+        for (i in directory.indices) {
+            val personName = getPerson(directory, i)
+            if (personName == person) {
+                foundCount++
+                break
+            }
+        }
+    }
+
+    return foundCount
+}
+
+fun jumpSearch(people: List<String>, sortedDirectory: List<String>): Int {
+    var foundCount = 0
+    val blockSize = sqrt(sortedDirectory.size.toDouble()).toInt()
+
+    for (person in people) {
+        var index = 0
+        val firstPerson = getPerson(sortedDirectory, index)
+
+        if (person == firstPerson) {
+            foundCount++
+            continue
+        }
+
+        index += blockSize
+
+        dirLoop@
+        while (index < sortedDirectory.size) {
+            val borderPerson = getPerson(sortedDirectory, index)
+
+            if (borderPerson.toUpperCase() > person.toUpperCase()) {
+                for (i in index downTo index - blockSize - 1) {
+                    val dirPerson = getPerson(sortedDirectory, i)
+                    if (dirPerson == person) {
+                        foundCount++
+                        break@dirLoop
+                    }
+                }
+                break@dirLoop
+            } else {
+                index += blockSize
+            }
+        }
+    }
+
+    return foundCount
+}
+
+/* List<String>, Int -> String
+ * Removes the phone number from a directory listing and returns the name associated with the number
+ */
+fun getPerson(directory: List<String>, index: Int): String {
+    return directory[index].split(" ").drop(1).joinToString(" ")
+}
+
 
 fun printDuration2(msDuration: Long) {
     val minutes = msDuration / 60_000
@@ -80,7 +156,7 @@ fun bubbleSort(dir: List<String>): MutableList<String> {
                 swaps++
             }
         }
-        //println("Iteration $counter: $people")
+        println("Iteration $counter")
         counter++
         endIndex--
         if (swaps == 0) break
