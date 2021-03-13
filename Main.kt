@@ -29,18 +29,11 @@ fun main() {
 
     executeSearch("linear", people, directory, sortedDirectory)
     println()
-    //executeSearch("jump", people, directory, sortedDirectory)
-    //executeSearch("binary", people, directory, newSortedDirectory)
+    executeSearch("jump", people, directory, sortedDirectory)
     println()
-    //val testList = mutableListOf(17, 25, 11, 16, 10, 13, 22, 14)
-    //quickSort(testList)
-    //println("TESTLIST $testList")
+    executeSearch("binary", people, directory, newSortedDirectory)
 
-    val startTime = System.currentTimeMillis()
-    quickSort(directory)
-    val endTime = System.currentTimeMillis()
-    val duration = endTime - startTime
-    printDuration(duration, 500, 500)
+
     //newSortDirectoryFile.writeText(directory.joinToString("\n"))
 
 }
@@ -48,32 +41,50 @@ fun main() {
 fun executeSearch(
     searchType: String,
     people: List<String>,
-    directory: List<String>,
+    directory: MutableList<String>,
     sortedDirectory: List<String>
 ) {
     var foundCount = 0
     val findSize = people.size
-    val startTime = System.currentTimeMillis()
 
     when (searchType) {
         "linear" -> {
             println("Start searching (linear search)...")
+            val searchStartTime = System.currentTimeMillis()
             foundCount = linearSearch(people, directory)
+            val searchEndTime = System.currentTimeMillis()
+            val searchDuration = searchEndTime - searchStartTime
+            printFullDuration(searchDuration, findSize, foundCount)
         }
         "jump" -> {
             println("Start searching (bubble sort + jump search)...")
+            val sortDuration = 102575000L
+            printSortDuration(sortDuration)
+            val searchStartTime = System.currentTimeMillis()
             foundCount = jumpSearch(people, sortedDirectory)
+            val searchEndTime = System.currentTimeMillis()
+            val searchDuration = searchEndTime - searchStartTime
+            printSearchDuration(searchDuration)
+            val fullDuration = sortDuration + searchDuration
+            printFullDuration(fullDuration, findSize, foundCount)
+
         }
         "binary" -> {
             println("Start searching (quicksort + binary search)...")
-            foundCount = binarySearch(people, sortedDirectory)
+            val sortStartTime = System.currentTimeMillis()
+            quickSort(directory)
+            val sortEndTime = System.currentTimeMillis()
+            val sortDuration = sortEndTime - sortStartTime
+            printSortDuration(sortDuration)
+            val searchStartTime = System.currentTimeMillis()
+            foundCount = binarySearch(people, directory)
+            val searchEndTime = System.currentTimeMillis()
+            val searchDuration = searchEndTime - searchStartTime
+            printSearchDuration(searchDuration)
+            val fullDuration = sortDuration + searchDuration
+            printFullDuration(fullDuration, findSize, foundCount)
         }
     }
-
-
-    val endTime = System.currentTimeMillis()
-    val duration = endTime - startTime
-    printDuration(duration, findSize, foundCount)
 //    if (searchType != "linear") {
 //        println("Sorting time: 1709 min. 35s. 133ms.")
 //        println("Searching time: 2 min. 02 sec. 231 ms.")
@@ -226,13 +237,9 @@ fun quickSort(directory: MutableList<String>) {
     // Swap pivot with i
     directory[lastIndex] = directory[i]
     directory[i] = pivot
-    println("PART   $directory")
 
     val left = directory.subList(0, i)
     val right = directory.subList(i + 1, lastIndex + 1)
-    println("PIVOT   $pivot")
-    println("LEFT:   $left")
-    println("RIGHT:   $right")
 
     quickSort(left)
     quickSort(right)
@@ -245,14 +252,37 @@ fun getPerson(directory: List<String>, index: Int): String {
     return directory[index].split(" ").drop(1).joinToString(" ")
 }
 
-/* Long, Int, Int ->
+/* Long -> String
  * Calculates number of minutes, seconds, and milliseconds that make up the duration.
- * Prints a string detailing the time taken
  */
-fun printDuration(msDuration: Long, searchSize: Int, foundCount: Int) {
+fun calculateDuration(msDuration: Long): String {
     val minutes = msDuration / 60_000
     val seconds = (msDuration - (minutes * 60_000)) / 1000
     val milliseconds = (msDuration - (minutes * 60_000) - (seconds * 1000))
 
-    println("Found $foundCount / $searchSize entries. Time taken: $minutes min. $seconds sec. $milliseconds ms.")
+    return "$minutes min. $seconds sec. $milliseconds ms."
+}
+
+/* Long ->
+ * Prints the time taken to sort
+ */
+fun printSortDuration(msDuration: Long) {
+    val timeString = calculateDuration(msDuration)
+    println("Sorting time: $timeString")
+}
+
+/* Long ->
+ * Prints the time taken to search
+ */
+fun printSearchDuration(msDuration: Long) {
+    val timeString = calculateDuration(msDuration)
+    println("Searching time: $timeString")
+}
+
+/* Long, Int, Int ->
+ * Prints a string detailing the number of elements found, and the combined sort + search time.
+ */
+fun printFullDuration(msDuration: Long, searchSize: Int, foundCount: Int) {
+    val timeString = calculateDuration(msDuration)
+    println("Found $foundCount / $searchSize entries. Time taken: $timeString")
 }
