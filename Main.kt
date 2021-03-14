@@ -2,6 +2,7 @@ package phonebook
 
 import java.io.File
 import kotlin.math.sqrt
+import kotlin.system.measureTimeMillis
 
 
 fun main() {
@@ -17,11 +18,6 @@ fun main() {
     val directory = directoryFile.readLines().toMutableList()
     val sortedDirectory = sortedDirectoryFile.readLines()
     val newSortedDirectory = newSortDirectoryFile.readLines()
-    val directoryHashMap = HashMap<Int, String>()
-
-    for (person in directory) {
-        directoryHashMap[person.hashCode()] = person
-    }
 
 //    val sortedDirectory = directory
 //        .sortedBy {
@@ -31,7 +27,6 @@ fun main() {
 //        .sortedBy { line: String -> line.split(" ")[1] }
 //    sortedDirectoryFile.writeText(sortedDirectory.joinToString("\n"))
 
-    println("DIR SIZE ${directory.size}")
     execute("linear", people, directory, sortedDirectory)
     println()
     execute("jump", people, directory, sortedDirectory)
@@ -39,26 +34,6 @@ fun main() {
     execute("binary", people, directory, newSortedDirectory)
     println()
     execute("hash", people, directory, sortedDirectory)
-}
-
-fun executeSort(dir: MutableList<String>, sortFun: (dir: MutableList<String>) -> Unit): Long {
-    val sortStartTime = System.currentTimeMillis()
-    sortFun(dir)
-    val sortEndTime = System.currentTimeMillis()
-    return sortEndTime - sortStartTime
-}
-
-fun executeSearch(
-    people: List<String>,
-    directory: List<String>,
-    searchFun: (p: List<String>, d: List<String>) -> Int
-): LongArray {
-    val searchStartTime = System.currentTimeMillis()
-    val foundCount = searchFun(people, directory).toLong()
-    val searchEndTime = System.currentTimeMillis()
-    val duration = searchEndTime - searchStartTime
-
-    return longArrayOf(foundCount, duration)
 }
 
 fun execute(
@@ -69,56 +44,43 @@ fun execute(
 ) {
     var sortDuration = 0L
     val findSize = people.size
-    var searchResults = LongArray(2)
+    var foundCount = 0
+    var searchDuration = -1L
 
     when (searchType) {
         "linear" -> {
             println("Start searching (linear search)...")
-            searchResults = executeSearch(people, directory, ::linearSearch)
+            searchDuration = measureTimeMillis { foundCount = linearSearch(people, directory) }
         }
         "jump" -> {
             println("Start searching (bubble sort + jump search)...")
             //sortDuration = 102575133L (the real bubble sort time)
             sortDuration = 5039
-            searchResults = executeSearch(people, sortedDirectory, ::jumpSearch)
+            searchDuration = measureTimeMillis { foundCount = jumpSearch(people, sortedDirectory) }
         }
         "binary" -> {
             println("Start searching (quick sort + binary search)...")
-            sortDuration = executeSort(directory, ::quickSort)
-            searchResults = executeSearch(people, directory, ::binarySearch)
+            sortDuration = measureTimeMillis { quickSort(directory) }
+            searchDuration = measureTimeMillis { foundCount = binarySearch(people, directory) }
         }
         "hash" -> {
             println("Start searching (hash table)...")
-            val sortStartTime = System.currentTimeMillis()
-            val hashDirectory = createHashMap(directory)
-            val sortEndTime = System.currentTimeMillis()
-            sortDuration = sortEndTime - sortStartTime
-            val searchStartTime = System.currentTimeMillis()
-            val foundCount = hashSearch(people, hashDirectory)
-            val searchEndTime = System.currentTimeMillis()
-            val searchDuration = searchEndTime - searchStartTime
-            val fullDuration = sortDuration + searchDuration
-
-            printDuration("Found $foundCount / $findSize entries.", fullDuration)
-            printDuration("Creating time:", sortDuration)
-            printDuration("Searching time:", searchDuration)
+            val hashDirectory: HashMap<Int, String>
+            sortDuration = measureTimeMillis { hashDirectory = createHashMap(directory) }
+            searchDuration = measureTimeMillis { foundCount = hashSearch(people, hashDirectory) }
         }
     }
 
-    if (searchType != "hash") {
-        val foundCount = searchResults[0]
-        val searchDuration = searchResults[1]
-        val fullDuration = sortDuration + searchDuration
+    val fullDuration = sortDuration + searchDuration
+    printDuration("Found $foundCount / $findSize entries.", fullDuration)
 
-        printDuration("Found $foundCount / $findSize entries.", fullDuration)
-
-        if (searchType != "linear") {
-            printDuration("Sorting time time:", sortDuration)
-            printDuration("Searching time:", searchDuration)
-        }
+    if (searchType != "hash" && searchType != "linear") {
+        printDuration("Sorting time time:", sortDuration)
+        printDuration("Searching time:", searchDuration)
+    } else if (searchType == "hash"){
+        printDuration("Creating time:", sortDuration)
+        printDuration("Searching time:", searchDuration)
     }
-
-
 }
 
 fun createHashMap(directory: List<String>): HashMap<Int, String> {
@@ -230,13 +192,6 @@ fun binarySearch(people: List<String>, sortedDirectory: List<String>): Int {
     return foundCount
 }
 
-/* Int, Int -> Int
- * Calculates the middle of the two edges. Rounded down to nearest Int via integer division
- */
-fun getMiddle(leftEdge: Int, rightEdge: Int): Int {
-    return (leftEdge + rightEdge) / 2
-}
-
 fun bubbleSort(directory: MutableList<String>): MutableList<String> {
     var endIndex = directory.size - 1
     var counter = 1
@@ -293,6 +248,13 @@ fun quickSort(directory: MutableList<String>) {
 
     quickSort(left)
     quickSort(right)
+}
+
+/* Int, Int -> Int
+ * Calculates the middle of the two edges. Rounded down to nearest Int via integer division
+ */
+fun getMiddle(leftEdge: Int, rightEdge: Int): Int {
+    return (leftEdge + rightEdge) / 2
 }
 
 /* List<String>, Int -> String
